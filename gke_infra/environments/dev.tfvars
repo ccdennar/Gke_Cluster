@@ -1,10 +1,10 @@
 project_id = "fresh-84"
-region     = "us-east1"
+region     = "us-central1"
 cluster_name = "ai-ent"
 environment  = "dev"
 
 vpc_name            = "dev-fresh-84-vpc"
-subnet_name         = "dev-fresh-84-subnet-web-us-east1"
+subnet_name         = "dev-fresh-84-subnet-web-us-central1"
 
 kubernetes_version = "1.32"
 release_channel    = "REGULAR"
@@ -34,7 +34,6 @@ node_pools = {
     machine_type = "e2-standard-2"
     min_count    = 1
     max_count    = 3
-    disk_size_gb = 200
     disk_type    = "pd-standard"
     labels = {
       "node-type" = "system"
