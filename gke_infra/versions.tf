@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.5.0"
+  backend "gcs" {}
 
   required_providers {
     google = {
@@ -10,10 +10,7 @@ terraform {
       source  = "hashicorp/google-beta"
       version = "~> 5.45"
     }
-    # kubernetes = {
-    #   source  = "hashicorp/kubernetes"
-    #   version = "~> 2.28"
-    # }
+   
   }
 }
 

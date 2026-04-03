@@ -1,5 +1,8 @@
 locals {
-  # Filter out GPU resources for autoscaling limits
+  # Construct network self_links directly — no data source lookup needed
+  network    = "projects/${var.project_id}/global/networks/${var.vpc_name}"
+  subnetwork = "projects/${var.project_id}/regions/${var.region}/subnetworks/${var.subnet_name}"
+
   gpu_resources = [
     for resource, limits in var.cluster_autoscaling_limits : {
       resource_type = resource
@@ -8,7 +11,7 @@ locals {
     }
     if contains(["nvidia-tesla-a100", "nvidia-tesla-v100", "nvidia-tesla-t4", "nvidia-l4", "nvidia-a10g"], resource)
   ]
-  
+
   standard_resources = [
     for resource, limits in var.cluster_autoscaling_limits : {
       resource_type = resource
@@ -17,27 +20,7 @@ locals {
     }
     if !contains(["nvidia-tesla-a100", "nvidia-tesla-v100", "nvidia-tesla-t4", "nvidia-l4", "nvidia-a10g"], resource)
   ]
-}
 
-# Data sources for existing VPC
-data "google_compute_network" "vpc" {
-  name = var.vpc_name
-}
-
-data "google_compute_subnetwork" "subnet" {
-  name   = var.subnet_name
-  region = var.region
-}
-
-# Node Service Account with minimal permissions
-resource "google_service_account" "gke_nodes" {
-  account_id   = "${var.cluster_name}-nodes"
-  display_name = "GKE Node Service Account for ${var.cluster_name}"
-  description  = "Minimal privilege SA for GKE nodes"
-}
-
-# Dynamic IAM bindings for node SA
-locals {
   node_sa_roles = [
     "roles/logging.logWriter",
     "roles/monitoring.metricWriter",
@@ -47,24 +30,29 @@ locals {
   ]
 }
 
+resource "google_service_account" "gke_nodes" {
+  account_id   = "${var.cluster_name}-nodes"
+  display_name = "GKE Node Service Account for ${var.cluster_name}"
+  description  = "Minimal privilege SA for GKE nodes"
+}
+
 resource "google_project_iam_member" "node_sa_bindings" {
   for_each = toset(local.node_sa_roles)
-  
+
   project = var.project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.gke_nodes.email}"
 }
 
-# Cloud Router and NAT for private nodes
 resource "google_compute_router" "router" {
-  count   = var.enable_private_nodes ? 1 : 0
+  count   = var.create_nat ? 1 : 0
   name    = "${var.cluster_name}-router"
   region  = var.region
-  network = data.google_compute_network.vpc.id
+  network = local.network
 }
 
 resource "google_compute_router_nat" "nat" {
-  count                              = var.enable_private_nodes ? 1 : 0
+  count                              = var.create_nat ? 1 : 0
   name                               = "${var.cluster_name}-nat"
   router                             = google_compute_router.router[0].name
   region                             = var.region
@@ -77,60 +65,52 @@ resource "google_compute_router_nat" "nat" {
   }
 }
 
-# Dynamic Pub/Sub topics for notifications
 resource "google_pubsub_topic" "notifications" {
   for_each = var.notification_topics
-  
+
   name   = "${var.cluster_name}-${each.key}"
   labels = merge(var.cluster_labels, lookup(each.value, "labels", {}))
 }
 
-# GKE Cluster
 resource "google_container_cluster" "primary" {
   provider = google-beta
-  
+
   name     = var.cluster_name
   location = var.region
   project  = var.project_id
 
-  # Networking
-  network    = data.google_compute_network.vpc.id
-  subnetwork = data.google_compute_subnetwork.subnet.id
+  network         = local.network
+  subnetwork      = local.subnetwork
   networking_mode = "VPC_NATIVE"
-  
+
   ip_allocation_policy {
     cluster_secondary_range_name  = var.pods_range_name
     services_secondary_range_name = var.services_range_name
   }
 
-  # Release channel
   release_channel {
     channel = var.release_channel
   }
 
-  min_master_version = var.kubernetes_version
-
-  # Remove default node pool
+  min_master_version       = var.kubernetes_version
   remove_default_node_pool = true
   initial_node_count       = 1
 
-  # Private cluster configuration - dynamic block
   dynamic "private_cluster_config" {
     for_each = var.enable_private_nodes ? [1] : []
     content {
       enable_private_nodes    = true
       enable_private_endpoint = var.enable_private_endpoint
       master_ipv4_cidr_block  = var.master_ipv4_cidr_block
-      
+
       master_global_access_config {
         enabled = true
       }
-      
-      private_endpoint_subnetwork = null  # Use default
+
+      private_endpoint_subnetwork = null
     }
   }
 
-  # Master authorized networks - dynamic block
   dynamic "master_authorized_networks_config" {
     for_each = length(var.master_authorized_networks) > 0 ? [1] : []
     content {
@@ -144,26 +124,22 @@ resource "google_container_cluster" "primary" {
     }
   }
 
-  # DNS Config
   dns_config {
     cluster_dns        = "CLOUD_DNS"
     cluster_dns_scope  = var.dns_access_scope
     cluster_dns_domain = "cluster.local"
   }
 
-  # Workload Identity
   workload_identity_config {
     workload_pool = "${var.project_id}.svc.id.goog"
   }
 
-  # Network policy with Dataplane V2
   datapath_provider = "ADVANCED_DATAPATH"
-  
+
   network_policy {
     enabled = true
   }
 
-  # Security features
   dynamic "binary_authorization" {
     for_each = var.binary_authorization_mode != "" ? [1] : []
     content {
@@ -173,27 +149,25 @@ resource "google_container_cluster" "primary" {
 
   enable_shielded_nodes = true
 
-  # Cost management
   dynamic "resource_usage_export_config" {
     for_each = var.resource_usage_dataset_id != null ? [1] : []
     content {
       enable_network_egress_metering       = true
       enable_resource_consumption_metering = true
-      
+
       bigquery_destination {
         dataset_id = var.resource_usage_dataset_id
       }
     }
   }
 
-  # Maintenance policy with exclusions
   maintenance_policy {
     recurring_window {
       start_time = var.maintenance_config.start_time
       end_time   = var.maintenance_config.end_time
       recurrence = var.maintenance_config.recurrence
     }
-    
+
     dynamic "maintenance_exclusion" {
       for_each = var.maintenance_config.exclusions
       content {
@@ -204,22 +178,20 @@ resource "google_container_cluster" "primary" {
     }
   }
 
-  # Logging - dynamic components
   logging_config {
     enable_components = var.logging_components
   }
 
-  # Monitoring - dynamic components
   monitoring_config {
     enable_components = var.monitoring_components
-    
+
     dynamic "managed_prometheus" {
       for_each = var.enable_managed_prometheus ? [1] : []
       content {
         enabled = true
       }
     }
-    
+
     dynamic "advanced_datapath_observability_config" {
       for_each = var.enable_managed_prometheus ? [1] : []
       content {
@@ -229,11 +201,9 @@ resource "google_container_cluster" "primary" {
     }
   }
 
-  # Cluster Autoscaling with dynamic resource limits
   cluster_autoscaling {
     enabled = true
-    
-    # Standard resources (CPU, memory)
+
     dynamic "resource_limits" {
       for_each = local.standard_resources
       content {
@@ -242,8 +212,7 @@ resource "google_container_cluster" "primary" {
         maximum       = resource_limits.value.maximum
       }
     }
-    
-    # GPU resources
+
     dynamic "resource_limits" {
       for_each = local.gpu_resources
       content {
@@ -252,23 +221,21 @@ resource "google_container_cluster" "primary" {
         maximum       = resource_limits.value.maximum
       }
     }
-    
+
     auto_provisioning_defaults {
       service_account = google_service_account.gke_nodes.email
-      oauth_scopes = [
-        "https://www.googleapis.com/auth/cloud-platform"
-      ]
-      
+      oauth_scopes    = ["https://www.googleapis.com/auth/cloud-platform"]
+
       management {
         auto_repair  = true
         auto_upgrade = true
       }
-      
+
       upgrade_settings {
         max_surge       = 1
         max_unavailable = 0
       }
-      
+
       shielded_instance_config {
         enable_secure_boot          = true
         enable_integrity_monitoring = true
@@ -276,12 +243,10 @@ resource "google_container_cluster" "primary" {
     }
   }
 
-  # Vertical Pod Autoscaling
   vertical_pod_autoscaling {
     enabled = true
   }
 
-  # Cost allocation
   dynamic "cost_management_config" {
     for_each = var.enable_cost_allocation ? [1] : []
     content {
@@ -289,7 +254,6 @@ resource "google_container_cluster" "primary" {
     }
   }
 
-  # Notification config - dynamic
   dynamic "notification_config" {
     for_each = length(var.notification_topics) > 0 ? [1] : []
     content {
@@ -308,8 +272,6 @@ resource "google_container_cluster" "primary" {
   ]
 
   lifecycle {
-    ignore_changes = [
-      initial_node_count,
-    ]
+    ignore_changes = [initial_node_count]
   }
 }
