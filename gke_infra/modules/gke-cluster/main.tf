@@ -281,3 +281,20 @@ resource "google_container_cluster" "primary" {
     ignore_changes = [initial_node_count]
   }
 }
+
+resource "google_container_node_pool" "bootstrap" {
+  name     = "bootstrap-pool"
+  cluster  = google_container_cluster.primary.name
+  location = var.region
+
+  node_count = 1
+
+  node_config {
+    machine_type = "e2-small"
+    disk_type    = "pd-standard"
+    disk_size_gb = 20
+
+    service_account = google_service_account.gke_nodes.email
+    oauth_scopes    = ["https://www.googleapis.com/auth/cloud-platform"]
+  }
+}
