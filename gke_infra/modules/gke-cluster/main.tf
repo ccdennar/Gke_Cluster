@@ -79,6 +79,8 @@ resource "google_container_cluster" "primary" {
   location = var.region
   project  = var.project_id
 
+  deletion_protection = false
+  
   network         = local.network
   subnetwork      = local.subnetwork
   networking_mode = "VPC_NATIVE"
