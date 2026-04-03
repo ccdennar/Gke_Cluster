@@ -102,7 +102,7 @@ resource "google_container_cluster" "primary" {
   node_config {
     machine_type = "e2-medium"   # required to fully override defaults
     disk_type    = "pd-standard"
-    disk_size_gb = 20
+    disk_size_gb = 10
   }
 
   dynamic "private_cluster_config" {
