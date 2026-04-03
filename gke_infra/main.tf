@@ -112,7 +112,7 @@ module "workload_identity" {
   # Cluster info for Workload Identity pool
   workload_identity_pool = module.gke_cluster.workload_identity_pool
 
-  depends_on = [ modulw.gke_cluster ]
+  depends_on = [ module.gke_cluster ]
 }
 
 # # Kubernetes Provider Setup
