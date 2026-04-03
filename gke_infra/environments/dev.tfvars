@@ -31,7 +31,7 @@ maintenance_config = {
 
 node_pools = {
   system = {
-    machine_type = "e2-standard-2"
+    machine_type = "e2-medium"
     min_count    = 1
     max_count    = 3
     disk_size_gb = 30
