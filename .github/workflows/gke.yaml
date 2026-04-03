@@ -13,6 +13,7 @@ permissions:
 env:
   TF_IN_AUTOMATION: true
   ENVIRONMENT: dev
+  STATE_BUCKET: tf-state-fresh-84
 
 jobs:
   terraform:
@@ -41,10 +42,25 @@ jobs:
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
 
+      - name: Create State Bucket if not exists
+        run: |
+          if ! gcloud storage buckets describe gs://${{ env.STATE_BUCKET }} --project=${{ secrets.GCP_PROJECT_ID }} > /dev/null 2>&1; then
+            echo "Creating state bucket..."
+            gcloud storage buckets create gs://${{ env.STATE_BUCKET }} \
+              --project=${{ secrets.GCP_PROJECT_ID }} \
+              --location=us-central1 \
+              --uniform-bucket-level-access
+            gcloud storage buckets update gs://${{ env.STATE_BUCKET }} \
+              --versioning
+            echo "Bucket created."
+          else
+            echo "Bucket already exists, skipping."
+          fi
+
       - name: Terraform Init
         run: |
           terraform init \
-            -backend-config="bucket=my-terraform-state-bucket" \
+            -backend-config="bucket=${{ env.STATE_BUCKET }}" \
             -backend-config="prefix=gke-infra/${{ env.ENVIRONMENT }}" \
             -reconfigure
 
