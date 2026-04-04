@@ -134,11 +134,14 @@ resource "google_container_cluster" "primary" {
     }
   }
 
-  dns_config {
+  dynamic "dns_config" {
+  for_each = var.dns_access_scope != "" ? [1] : []
+  content {
     cluster_dns        = "CLOUD_DNS"
-    cluster_dns_scope  = var.dns_access_scope
+    cluster_dns_scope  = ""
     cluster_dns_domain = "cluster.local"
   }
+}
 
   workload_identity_config {
     workload_pool = "${var.project_id}.svc.id.goog"
