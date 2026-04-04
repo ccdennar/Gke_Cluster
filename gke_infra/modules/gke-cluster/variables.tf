@@ -70,3 +70,9 @@ variable "notification_topics" {
   }))
   default = {}
 }
+
+variable "location" {
+  description = "Zone for zonal cluster or region for regional cluster"
+  type        = string
+  default     = null
+}

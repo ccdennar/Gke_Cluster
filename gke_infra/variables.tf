@@ -240,3 +240,8 @@ variable "create_nat" {
   type    = bool
   default = false
 }
+
+variable "location" {
+  type    = string
+  default = null
+}

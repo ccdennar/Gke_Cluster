@@ -76,7 +76,7 @@ resource "google_container_cluster" "primary" {
   provider = google-beta
 
   name     = var.cluster_name
-  location = var.region
+  location = coalesce(var.location, var.region) 
   project  = var.project_id
 
   deletion_protection = false
@@ -100,6 +100,7 @@ resource "google_container_cluster" "primary" {
 
   
   node_config {
+
     machine_type = "e2-medium"   # required to fully override defaults
     disk_type    = "pd-standard"
     disk_size_gb = 15
