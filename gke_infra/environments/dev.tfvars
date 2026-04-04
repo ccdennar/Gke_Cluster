@@ -1,6 +1,6 @@
 project_id   = "fresh-84"
 region       = "us-central1"
-location     = ["us-central1-a"]
+location     = "us-central1-a"
 cluster_name = "ai-ent"
 environment  = "dev"
 
