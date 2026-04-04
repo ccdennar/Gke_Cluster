@@ -12,8 +12,8 @@ enable_private_nodes = false
 kubernetes_version = "1.32"
 release_channel    = "REGULAR"
 
-enable_private_endpoint = false  # Public endpoint for dev
-enable_private_nodes    = false
+# enable_private_endpoint = false  # Public endpoint for dev
+# enable_private_nodes    = false
 master_ipv4_cidr_block  = "172.16.0.0/28"
 
 
