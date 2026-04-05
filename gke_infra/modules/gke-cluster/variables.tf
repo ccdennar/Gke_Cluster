@@ -77,3 +77,8 @@ variable "location" {
   default     = null
 }
 
+variable "zone" {
+  type = string
+  default = "us-central1-a"
+}
+

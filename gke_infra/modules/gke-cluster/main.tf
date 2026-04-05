@@ -76,7 +76,7 @@ resource "google_container_cluster" "primary" {
   provider = google-beta
 
   name     = var.cluster_name
-  location = coalesce(var.location, var.region) 
+  location = coalesce(var.location, var.zone) 
   project  = var.project_id
 
   deletion_protection = false
@@ -96,7 +96,7 @@ resource "google_container_cluster" "primary" {
 
   min_master_version       = var.kubernetes_version
   remove_default_node_pool = true
-  initial_node_count       = 1
+  initial_node_count       = 0
 
   
   node_config {
@@ -109,7 +109,7 @@ resource "google_container_cluster" "primary" {
   dynamic "private_cluster_config" {
     for_each = var.enable_private_nodes ? [1] : []
     content {
-      enable_private_nodes    = true
+      enable_private_nodes    = false
       enable_private_endpoint = var.enable_private_endpoint
       master_ipv4_cidr_block  = var.master_ipv4_cidr_block
 
