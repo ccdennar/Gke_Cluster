@@ -77,6 +77,9 @@ module "gke_cluster" {
   # Autoscaling
   cluster_autoscaling_limits = var.cluster_autoscaling_limits
   
+  # ADD THIS: Initial node count (required even with separate node pools)
+  initial_node_count = 1
+  
   # Labels
   cluster_labels = local.cluster_labels
   
