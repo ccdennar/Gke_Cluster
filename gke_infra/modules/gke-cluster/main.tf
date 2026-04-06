@@ -80,7 +80,8 @@ resource "google_container_cluster" "primary" {
   project  = var.project_id
 
   deletion_protection = false
-
+  initial_node_count       = 1 
+  
   network         = local.network
   subnetwork      = local.subnetwork
   networking_mode = "VPC_NATIVE"
@@ -96,7 +97,7 @@ resource "google_container_cluster" "primary" {
 
   min_master_version       = var.kubernetes_version
   remove_default_node_pool = true
-  initial_node_count       = 0
+  
 
   
   node_config {
