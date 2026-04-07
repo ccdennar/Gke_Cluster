@@ -83,7 +83,7 @@ module "gke_cluster" {
   # Notifications
   notification_topics = var.notification_topics
 
-  depends_on = [module.cloud_nat]
+  
 }
 
 # Node Pools Module
