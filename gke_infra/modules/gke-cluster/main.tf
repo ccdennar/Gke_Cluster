@@ -110,9 +110,10 @@ resource "google_container_cluster" "primary" {
   dynamic "private_cluster_config" {
     for_each = var.enable_private_nodes ? [1] : []
     content {
-      enable_private_nodes    = false
+      enable_private_nodes    = true
       enable_private_endpoint = var.enable_private_endpoint
       master_ipv4_cidr_block  = var.master_ipv4_cidr_block
+      
 
       master_global_access_config {
         enabled = true
@@ -120,6 +121,12 @@ resource "google_container_cluster" "primary" {
 
       private_endpoint_subnetwork = null
     }
+  }
+
+  timeouts {
+    create = "60m"
+    update = "60m"
+    delete = "30m"
   }
 
   dynamic "master_authorized_networks_config" {
