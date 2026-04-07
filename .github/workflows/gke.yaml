@@ -73,3 +73,6 @@ jobs:
       - name: Terraform Apply
         if: github.ref == 'refs/heads/master'
         run: terraform apply -auto-approve tfplan
+        env:
+          TF_VAR_initial_node_count: 1
+        timeout-minutes: 90 

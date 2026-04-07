@@ -12,14 +12,14 @@ enable_private_nodes = false
 kubernetes_version = "1.32"
 release_channel    = "REGULAR"
 
-enable_private_endpoint = true  # Public endpoint for dev
+enable_private_endpoint = false  # Public endpoint for dev
 master_ipv4_cidr_block  = "172.16.0.0/28"
 
 
 master_authorized_networks = [
   {
-    cidr_block   = "0.0.0.0/0"  # Open for dev (restrict in real scenarios)
-    display_name = "open-access"
+    cidr_block   = "10.0.0.0/16"  # Open for dev (restrict in real scenarios)
+    display_name = "dev-fresh-84-vpc-access"
   }
 ]
 
