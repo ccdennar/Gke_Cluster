@@ -86,6 +86,16 @@ resource "google_container_cluster" "primary" {
   subnetwork      = local.subnetwork
   networking_mode = "VPC_NATIVE"
 
+   provisioner "local-exec" {
+    command = <<-EOT
+      echo "Waiting for cluster to stabilize..."
+      sleep 60
+      gcloud container clusters get-credentials ${self.name} --region=${self.location} --project=${self.project}
+      kubectl get nodes || true
+    EOT
+  }
+
+
   ip_allocation_policy {
     cluster_secondary_range_name  = var.pods_range_name
     services_secondary_range_name = var.services_range_name
